@@ -1,0 +1,267 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.List;
+
+class Torre {
+    private String tipo;
+    private int x, y;
+
+    public Torre(String tipo, int x, int y) {
+        this.tipo = tipo;
+        this.x = x;
+        this.y = y;
+    }
+
+    public String getTipo() {
+        return tipo;
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
+    }
+}
+
+class Inimigo {
+    private String tipo;
+    private int x, y;
+
+    public Inimigo(String tipo, int x, int y) {
+        this.tipo = tipo;
+        this.x = x;
+        this.y = y;
+    }
+
+    public String getTipo() {
+        return tipo;
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public void mover(int velocidade) {
+        x -= velocidade;
+    }
+}
+
+class Projetil {
+    private int x, y;
+    private int targetX, targetY;
+    private int velocidade;
+    private long tempoCriacao;
+
+    public Projetil(int x, int y, int targetX, int targetY, int velocidade) {
+        this.x = x;
+        this.y = y;
+        this.targetX = targetX;
+        this.targetY = targetY;
+        this.velocidade = velocidade;
+        this.tempoCriacao = System.currentTimeMillis();
+    }
+
+    public int getX() {
+        return x;
+    }
+
+    public int getY() {
+        return y;
+    }
+
+    public void mover() {
+        int dx = targetX - x;
+        int dy = targetY - y;
+        double distancia = Math.sqrt(dx * dx + dy * dy);
+        if (distancia > velocidade) {
+            x += (int) (velocidade * dx / distancia);
+            y += (int) (velocidade * dy / distancia);
+        } else {
+            x = targetX;
+            y = targetY;
+        }
+    }
+
+    public boolean atingiuAlvo() {
+        return x == targetX && y == targetY;
+    }
+
+    public boolean podeMover() {
+        return System.currentTimeMillis() - tempoCriacao >= 1000;
+    }
+}
+
+public class Main extends JFrame {
+    private JPanel gamePanel;
+    private JPanel controlPanel;
+    private JButton pauseButton;
+    private boolean paused = false;
+    private Timer gameTimer;
+
+    private List<Torre> torres = new ArrayList<>();
+    private List<Inimigo> inimigos = new ArrayList<>();
+    private List<Projetil> projeteis = new ArrayList<>();
+    private Torre torreSelecionada = null;
+
+    public Main() {
+        setTitle("Tower Defense");
+        setSize(800, 600);
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        gamePanel = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                desenharEstrada(g);
+                desenharPosicoesTorres(g);
+                desenharTorres(g);
+                desenharInimigos(g);
+                desenharProjeteis(g);
+            }
+        };
+        gamePanel.setPreferredSize(new Dimension(800, 500));
+        gamePanel.setBackground(Color.GREEN);
+        gamePanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                clicarNaArea(e.getX(), e.getY());
+            }
+        });
+        add(gamePanel, BorderLayout.CENTER);
+
+        controlPanel = new JPanel(new GridLayout(1, 5));
+        add(controlPanel, BorderLayout.SOUTH);
+
+        String[] tipos = {"+", "-", "*", "/"};
+        for (String tipo : tipos) {
+            JButton btnTorre = new JButton(tipo);
+            btnTorre.addActionListener(e -> torreSelecionada = new Torre(tipo, -1, -1));
+            controlPanel.add(btnTorre);
+        }
+
+        pauseButton = new JButton("Pause");
+        pauseButton.addActionListener(e -> alternarPausa());
+        controlPanel.add(pauseButton);
+
+        gameTimer = new Timer(50, e -> atualizarJogo());
+        gameTimer.start();
+
+        gerarInimigos();
+    }
+
+    private void desenharEstrada(Graphics g) {
+        g.setColor(Color.GRAY);
+        g.fillRect(0, 230, getWidth(), 40);
+    }
+
+    private void desenharPosicoesTorres(Graphics g) {
+        g.setColor(Color.PINK);
+        for (int i = 0; i < 4; i++) {
+            g.fillRect(100 * i + 50, 150, 40, 40);
+            g.fillRect(100 * i + 50, 310, 40, 40);
+        }
+    }
+
+    private void desenharTorres(Graphics g) {
+        for (Torre torre : torres) {
+            g.setColor(Color.BLUE);
+            g.fillRect(torre.getX(), torre.getY(), 40, 40);
+
+            g.setColor(new Color(0, 0, 255, 50));
+            g.fillOval(torre.getX() - 80, torre.getY() - 80, 200, 200);
+
+            g.setColor(Color.WHITE);
+            g.drawString(torre.getTipo(), torre.getX() + 15, torre.getY() + 25);
+        }
+    }
+
+    private void desenharInimigos(Graphics g) {
+        g.setColor(Color.RED);
+        g.setFont(g.getFont().deriveFont(Font.BOLD, 16));
+        for (Inimigo inimigo : inimigos) {
+            g.drawString(inimigo.getTipo(), inimigo.getX(), inimigo.getY());
+        }
+    }
+
+    private void desenharProjeteis(Graphics g) {
+        g.setColor(new Color(128, 0, 128));
+        for (Projetil projetil : projeteis) {
+            g.fillOval(projetil.getX(), projetil.getY(), 10, 10);
+        }
+    }
+
+    private void clicarNaArea(int x, int y) {
+        if (torreSelecionada != null) {
+            for (int i = 0; i < 4; i++) {
+                if (x >= 100 * i + 50 && x <= 100 * i + 90 && (y >= 150 && y <= 190 || y >= 310 && y <= 350)) {
+                    torreSelecionada = new Torre(torreSelecionada.getTipo(), 100 * i + 50, y >= 310 ? 310 : 150);
+                    torres.add(torreSelecionada);
+                    torreSelecionada = null;
+                    repaint();
+                    return;
+                }
+            }
+        }
+    }
+
+    private void atualizarJogo() {
+        if (!paused) {
+            for (Inimigo inimigo : inimigos) {
+                inimigo.mover(2);
+            }
+
+            for (Projetil projetil : projeteis) {
+                if (projetil.podeMover()) {
+                    projetil.mover();
+                }
+            }
+
+            projeteis.removeIf(Projetil::atingiuAlvo);
+            inimigos.removeIf(inimigo -> projeteis.stream().anyMatch(p -> p.atingiuAlvo() &&
+                    p.getX() == inimigo.getX() && p.getY() == inimigo.getY()));
+
+            for (Torre torre : torres) {
+                for (Inimigo inimigo : inimigos) {
+                    double distancia = Math.sqrt(Math.pow(torre.getX() + 20 - inimigo.getX(), 2) + Math.pow(torre.getY() + 20 - inimigo.getY(), 2));
+                    if (distancia <= 100) {
+                        projeteis.add(new Projetil(torre.getX() + 20, torre.getY() + 20, inimigo.getX(), inimigo.getY(), 5));
+                        break;
+                    }
+                }
+            }
+
+            if (inimigos.isEmpty()) {
+                gerarInimigos();
+            }
+
+            repaint();
+        }
+    }
+
+    private void gerarInimigos() {
+        inimigos.add(new Inimigo("!", 750, 250));
+        inimigos.add(new Inimigo("@", 800, 250));
+        inimigos.add(new Inimigo("#", 850, 250));
+    }
+
+    private void alternarPausa() {
+        paused = !paused;
+        pauseButton.setText(paused ? "Resume" : "Pause");
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            Main game = new Main();
+            game.setVisible(true);
+        });
+    }
+}
