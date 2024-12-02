@@ -1,0 +1,192 @@
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
+
+interface CharacterPrototype extends Cloneable {
+    CharacterPrototype clone();
+}
+
+class GameCharacter implements CharacterPrototype {
+    private String name;
+    private String role;
+    private int strength;
+    private int speed;
+    private int defense;
+    private int mana;
+
+    public GameCharacter(String name, String role, int strength, int speed, int defense, int mana) {
+        this.name = name;
+        this.role = role;
+        this.strength = strength;
+        this.speed = speed;
+        this.defense = defense;
+        this.mana = mana;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setStrength(int strength) {
+        this.strength = strength;
+    }
+
+    public void setSpeed(int speed) {
+        this.speed = speed;
+    }
+
+    public void setDefense(int defense) {
+        this.defense = defense;
+    }
+
+    public void setMana(int mana) {
+        this.mana = mana;
+    }
+
+    public int getStrength() {
+        return strength;
+    }
+
+    public int getSpeed() {
+        return speed;
+    }
+
+    public int getDefense() {
+        return defense;
+    }
+
+    public int getMana() {
+        return mana;
+    }
+
+    @Override
+    public GameCharacter clone() {
+        return new GameCharacter(name, role, strength, speed, defense, mana);
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    @Override
+    public String toString() {
+        return name + " {" +
+                "Classe='" + role + '\'' +
+                ", Força=" + strength +
+                ", Velocidade=" + speed +
+                ", Defesa=" + defense +
+                ", Mana=" + mana +
+                '}';
+    }
+}
+
+class CharacterRegistry {
+    private Map<Integer, GameCharacter> prototypes = new HashMap<>();
+    private Map<Integer, String> classNames = new HashMap<>();
+
+    public void addPrototype(int key, String name, GameCharacter character) {
+        prototypes.put(key, character);
+        classNames.put(key, name);
+    }
+
+    public GameCharacter getPrototype(int key) {
+        return prototypes.get(key).clone();
+    }
+
+    public String getClassName(int key) {
+        return classNames.get(key);
+    }
+
+    public void displayClassOptions() {
+        for (Map.Entry<Integer, String> entry : classNames.entrySet()) {
+            System.out.println(entry.getKey() + " - " + entry.getValue());
+        }
+    }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        CharacterRegistry registry = new CharacterRegistry();
+        registry.addPrototype(1, "Bárbaro", new GameCharacter("Default Bárbaro", "Bárbaro", 15, 8, 15, 2));
+        registry.addPrototype(2, "Mago", new GameCharacter("Default Mago", "Mago", 7, 6, 7, 20));
+        registry.addPrototype(3, "Assassino", new GameCharacter("Default Assassino", "Assassino", 14, 14, 7, 5));
+        registry.addPrototype(4, "Arqueiro", new GameCharacter("Default Arqueiro", "Arqueiro", 12, 10, 7, 11));
+
+        boolean classConfirmed = false;
+        GameCharacter character = null;
+
+        while (!classConfirmed) {
+            System.out.println("Escolha uma classe pelo número:");
+            registry.displayClassOptions();
+            int classChoice = scanner.nextInt();
+            scanner.nextLine();
+            character = registry.getPrototype(classChoice);
+            if (character == null) {
+                System.out.println("Classe inválida. Tente novamente.");
+                continue;
+            }
+            String chosenClass = registry.getClassName(classChoice);
+            System.out.println("Você quer manter a classe de " + chosenClass + "? (1 - Sim, 2 - Não)");
+            int confirmClass = scanner.nextInt();
+            if (confirmClass == 1) {
+                classConfirmed = true;
+            } else {
+                System.out.println("Escolha novamente a classe.");
+            }
+        }
+
+        System.out.println("Digite o nome do seu personagem:");
+        scanner.nextLine();
+        String name = scanner.nextLine();
+        character.setName(name);
+
+        boolean pointsConfirmed = false;
+
+        while (!pointsConfirmed) {
+            int remainingPoints = 10;
+
+            while (remainingPoints > 0) {
+                System.out.println("Você tem " + remainingPoints + " pontos para distribuir.");
+                System.out.println("Atributos atuais: " + character);
+                System.out.println("Escolha um atributo para adicionar pontos:");
+                System.out.println("1 - Força\n2 - Velocidade\n3 - Defesa\n4 - Mana");
+                int attributeChoice = scanner.nextInt();
+
+                switch (attributeChoice) {
+                    case 1:
+                        character.setStrength(character.getStrength() + 1);
+                        break;
+                    case 2:
+                        character.setSpeed(character.getSpeed() + 1);
+                        break;
+                    case 3:
+                        character.setDefense(character.getDefense() + 1);
+                        break;
+                    case 4:
+                        character.setMana(character.getMana() + 1);
+                        break;
+                    default:
+                        System.out.println("Escolha inválida. Tente novamente.");
+                        continue;
+                }
+                remainingPoints--;
+            }
+
+            System.out.println("Personagem criado: " + character);
+            System.out.println("Você confirma a distribuição dos pontos? (1 - Sim, 2 - Não)");
+            int confirmPoints = scanner.nextInt();
+            if (confirmPoints == 1) {
+                pointsConfirmed = true;
+                System.out.println("Personagem final criado com sucesso!");
+                System.out.println(character);
+            } else {
+                System.out.println("Redistribuindo os pontos...");
+                character = registry.getPrototype(character.getStrength() == 15 ? 1 : character.getMana() == 20 ? 2 : character.getSpeed() == 14 ? 3 : 4);
+                character.setName(name);
+            }
+        }
+
+        scanner.close();
+    }
+}
